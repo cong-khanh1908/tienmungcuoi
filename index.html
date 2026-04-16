@@ -597,22 +597,58 @@
     <div class="gsheet-panel" id="shareConfigPanel" style="display:none">
       <h3>📲 Chuyển cấu hình sang thiết bị khác</h3>
       <div class="tip-box" style="margin-bottom:12px">
-        Tạo link chứa cấu hình đã mã hoá. Mở link đó trên điện thoại / máy tính khác → cấu hình tự điền sẵn → nhấn Lưu là xong. <strong>Chỉ chia sẻ cho bản thân, không gửi cho người khác.</strong>
+        Cấu hình được nén tối đa và chia nhỏ khi cần. Mở link / quét QR trên thiết bị khác → cấu hình tự điền → nhấn Lưu là xong. <strong>⚠️ Chỉ gửi cho bản thân qua Zalo/Telegram riêng tư.</strong>
       </div>
-      <div class="gsheet-actions">
-        <button class="btn-gsheet primary" onclick="gsExportConfigLink()">🔗 Tạo Link cấu hình</button>
-        <button class="btn-gsheet secondary" onclick="gsExportConfigQR()">📱 Hiện QR Code</button>
+
+      <!-- SIZE PREVIEW BAR -->
+      <div id="cfgSizePreview" style="display:none;margin-bottom:14px;padding:10px 12px;background:#f8f5f2;border-radius:10px;border:1.5px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:700;color:var(--text-muted)">📏 Kích thước payload</span>
+          <span id="cfgSizeLabel" style="font-size:12px;font-weight:800"></span>
+        </div>
+        <div style="height:6px;background:#e8e2db;border-radius:3px;overflow:hidden">
+          <div id="cfgSizeBar" style="height:100%;border-radius:3px;transition:width 0.4s;background:var(--green)"></div>
+        </div>
+        <div id="cfgSizeNote" style="font-size:11px;color:var(--text-muted);margin-top:5px"></div>
       </div>
-      <div id="configLinkBox" style="display:none;margin-top:12px">
-        <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px">Link cấu hình (nhấn để copy):</div>
-        <div id="configLinkText" onclick="gsCopyLink(this)"
-          style="background:#f2ede8;border-radius:8px;padding:10px 12px;font-size:11px;font-family:monospace;word-break:break-all;cursor:pointer;border:1.5px solid var(--border);transition:background 0.2s"
-          title="Nhấn để sao chép"></div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">⚠️ Link chứa private key — chỉ gửi cho bản thân qua Zalo/Telegram riêng tư.</div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="gsheet-actions" style="flex-wrap:wrap;gap:8px">
+        <button class="btn-gsheet primary" onclick="gsExportConfigLink()" style="flex:1;min-width:120px">🔗 Tạo Link</button>
+        <button class="btn-gsheet secondary" onclick="gsExportConfigQR()" style="flex:1;min-width:120px">📱 QR Code</button>
+        <button class="btn-gsheet secondary" onclick="gsExportConfigMinified()" style="flex:1;min-width:120px" title="Loại bỏ metadata thừa, giữ lại các trường tối thiểu">⚡ Link tối giản</button>
       </div>
-      <div id="configQRBox" style="display:none;margin-top:12px;text-align:center">
-        <canvas id="qrCanvas" style="border-radius:12px;border:4px solid white;box-shadow:var(--shadow)"></canvas>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Quét bằng camera điện thoại để mở link trên thiết bị đó.</div>
+
+      <!-- LINK BOX -->
+      <div id="configLinkBox" style="display:none;margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:700;color:var(--text-muted)" id="configLinkLabel">Link cấu hình:</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="gsCopyConfigLink()" style="padding:5px 12px;font-size:11px;font-weight:700;border:1.5px solid var(--primary);border-radius:20px;background:var(--primary-light);color:var(--primary);cursor:pointer;font-family:inherit">📋 Sao chép</button>
+            <button onclick="gsShareConfigLink()" id="btnShareLink" style="padding:5px 12px;font-size:11px;font-weight:700;border:1.5px solid var(--green);border-radius:20px;background:var(--green-light);color:var(--green);cursor:pointer;font-family:inherit">↗️ Chia sẻ</button>
+          </div>
+        </div>
+        <div id="configLinkText"
+          style="background:#f2ede8;border-radius:8px;padding:10px 12px;font-size:11px;font-family:monospace;word-break:break-all;border:1.5px solid var(--border);max-height:120px;overflow-y:auto;line-height:1.6;user-select:all"></div>
+        <div id="configLinkFooter" style="font-size:11px;color:var(--text-muted);margin-top:6px"></div>
+      </div>
+
+      <!-- QR BOX (đơn hoặc phân đoạn) -->
+      <div id="configQRBox" style="display:none;margin-top:14px">
+        <!-- QR đơn -->
+        <div id="qrSingleWrap" style="text-align:center">
+          <div id="qrCodeDiv" style="display:inline-block;border-radius:12px;border:4px solid white;box-shadow:var(--shadow);background:white;padding:8px"></div>
+          <div id="qrSingleNote" style="font-size:11px;color:var(--text-muted);margin-top:8px"></div>
+          <button onclick="gsDownloadQR(0)" style="margin-top:10px;padding:8px 18px;font-size:12px;font-weight:700;border:1.5px solid var(--border);border-radius:20px;background:#f8f5f2;color:var(--text);cursor:pointer;font-family:inherit">💾 Lưu ảnh QR</button>
+        </div>
+
+        <!-- QR phân đoạn -->
+        <div id="qrSegmentWrap" style="display:none">
+          <div style="background:#fff8e8;border:1.5px solid #fdd835;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#6a4800;font-weight:600">
+            ⚠️ Config lớn — đã chia thành <strong id="qrSegCount">2</strong> mã QR. Quét lần lượt theo thứ tự trên thiết bị kia.
+          </div>
+          <div id="qrSegContainer" style="display:flex;flex-direction:column;gap:16px;align-items:center"></div>
+        </div>
       </div>
     </div>
 
@@ -850,6 +886,19 @@ const LZS = (() => {
 })();
 
 function loadGsConfig() {
+  // 0. Xử lý QR phân đoạn #cfg2seg=
+  try {
+    if (window.location.hash.startsWith('#cfg2seg=')) {
+      const res = _loadSegmentedConfig();
+      if (res === 'done') {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        return 'url'; // _pendingCfgFromUrl đã được set
+      } else if (res === true) {
+        return 'segment_partial'; // hiển thị hướng dẫn quét thêm
+      }
+    }
+  } catch(e) {}
+
   // 1. Từ URL hash (#cfg2=nén hoặc #cfg=cũ) — dùng khi mở link chuyển thiết bị
   try {
     const hash = window.location.hash;
@@ -903,104 +952,305 @@ function saveGsConfig(cfg) {
   try { GS_CONFIG = cfg; localStorage.setItem(GS_CONFIG_KEY, JSON.stringify(cfg)); } catch(e) {}
 }
 
-function gsBuildConfigUrl() {
-  const json = JSON.stringify(GS_CONFIG);
+// ==================== CONFIG SHARING — UPGRADED ====================
+
+// Các trường tối thiểu của service account (bỏ metadata thừa ~40%)
+const SA_MINIMAL_FIELDS = ['type','project_id','private_key_id','private_key','client_email','token_uri'];
+
+// Minify keyObj — chỉ giữ các trường cần thiết để sinh JWT
+function gsMinifyKeyObj(keyObj) {
+  const out = {};
+  SA_MINIMAL_FIELDS.forEach(k => { if (keyObj[k]) out[k] = keyObj[k]; });
+  return out;
+}
+
+// Xây link từ config (full hoặc minified)
+function gsBuildConfigUrl(cfgOverride) {
+  const cfg = cfgOverride || GS_CONFIG;
+  const json = JSON.stringify(cfg);
   const compressed = LZS.compress(json);
   const base = window.location.href.split('#')[0];
   return base + '#cfg2=' + compressed;
 }
 
-// Xuất link cấu hình để chuyển sang thiết bị khác
+// Hiển thị size preview bar
+function gsShowSizePreview(url) {
+  const len = url.length;
+  const preview = document.getElementById('cfgSizePreview');
+  const bar = document.getElementById('cfgSizeBar');
+  const label = document.getElementById('cfgSizeLabel');
+  const note = document.getElementById('cfgSizeNote');
+  preview.style.display = 'block';
+
+  // QR limit thực tế ≈ 2953 bytes (QR ver 40, mode byte, ECC L)
+  const QR_LIMIT = 2900;
+  const pct = Math.min(len / QR_LIMIT * 100, 100);
+  bar.style.width = pct + '%';
+
+  if (len <= QR_LIMIT) {
+    bar.style.background = 'var(--green)';
+    label.style.color = 'var(--green)';
+    label.textContent = `${len} ký tự ✅`;
+    note.textContent = `✅ Vừa 1 mã QR (giới hạn ~${QR_LIMIT})`;
+  } else if (len <= QR_LIMIT * 2) {
+    bar.style.background = 'var(--gold)';
+    label.style.color = 'var(--gold)';
+    label.textContent = `${len} ký tự ⚠️`;
+    note.textContent = `⚠️ Cần 2 mã QR phân đoạn. Thử "Link tối giản" để xuống 1 QR.`;
+  } else {
+    bar.style.background = '#e74c3c';
+    label.style.color = '#e74c3c';
+    label.textContent = `${len} ký tự ❌`;
+    const segs = Math.ceil(len / QR_LIMIT);
+    note.textContent = `❌ Cần ${segs} mã QR phân đoạn. Khuyến nghị dùng Link.`;
+  }
+}
+
+// Tạo link đầy đủ
 function gsExportConfigLink() {
   if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
   const url = gsBuildConfigUrl();
-  const box = document.getElementById('configLinkBox');
-  const txt = document.getElementById('configLinkText');
-  box.style.display = 'block';
-  document.getElementById('configQRBox').style.display = 'none';
-  txt.textContent = url;
-  txt.style.background = '#f2ede8';
-  // Hiện thêm thông tin kích thước
-  const len = url.length;
-  const pct = Math.round((1 - len / (window.location.href.split('#')[0].length + 1 + JSON.stringify(GS_CONFIG).length * 1.4)) * 100);
-  gsLog('ok', `🔗 Link tạo xong — ${len} ký tự`);
+  _showLinkBox(url, 'Link đầy đủ (nhấn Sao chép):');
+  gsShowSizePreview(url);
+  gsLog('ok', `🔗 Link tạo xong — ${url.length} ký tự`);
 }
 
-function gsCopyLink(el) {
-  const text = el.textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    el.style.background = '#d4edda';
+// Tạo link tối giản (chỉ các trường tối thiểu của service account ~40% nhỏ hơn)
+function gsExportConfigMinified() {
+  if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
+  const minCfg = {
+    sheetId: GS_CONFIG.sheetId,
+    sheetName: GS_CONFIG.sheetName || 'DiLai',
+    keyObj: gsMinifyKeyObj(GS_CONFIG.keyObj)
+  };
+  const url = gsBuildConfigUrl(minCfg);
+  _showLinkBox(url, '⚡ Link tối giản (bỏ metadata thừa):');
+  gsShowSizePreview(url);
+  showToast(`⚡ Tối giản: ${url.length} ký tự`);
+  gsLog('ok', `⚡ Link tối giản — ${url.length} ký tự`);
+}
+
+function _showLinkBox(url, label) {
+  document.getElementById('configQRBox').style.display = 'none';
+  const box = document.getElementById('configLinkBox');
+  box.style.display = 'block';
+  document.getElementById('configLinkLabel').textContent = label;
+  document.getElementById('configLinkText').textContent = url;
+  // Web Share API availability
+  document.getElementById('btnShareLink').style.display =
+    (navigator.share) ? 'inline-block' : 'none';
+  // Update footer
+  const QR_LIMIT = 2900;
+  const footer = document.getElementById('configLinkFooter');
+  if (url.length > QR_LIMIT) {
+    footer.innerHTML = `⚠️ Link ${url.length} ký tự — dài cho một số app. Thử <strong>⚡ Link tối giản</strong> hoặc dán trực tiếp vào trình duyệt.`;
+    footer.style.color = '#9b1c2e';
+  } else {
+    footer.innerHTML = `✅ ${url.length} ký tự — gửi qua Zalo/Telegram/Messenger được. Chỉ gửi cho bản thân.`;
+    footer.style.color = 'var(--text-muted)';
+  }
+  // Store for copy/share
+  window._currentShareUrl = url;
+}
+
+function gsCopyConfigLink() {
+  const url = window._currentShareUrl;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
     showToast('✅ Đã sao chép link!');
-    setTimeout(() => el.style.background = '#f2ede8', 1500);
   }).catch(() => {
-    // fallback
     const ta = document.createElement('textarea');
-    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
     document.body.removeChild(ta);
     showToast('✅ Đã sao chép!');
   });
 }
 
+async function gsShareConfigLink() {
+  const url = window._currentShareUrl;
+  if (!url || !navigator.share) { showToast('⚠️ Trình duyệt không hỗ trợ chia sẻ'); return; }
+  try {
+    await navigator.share({ title: 'Cấu hình Google Sheets', text: 'Mở link này để nhập cấu hình', url });
+  } catch(e) { /* user cancelled */ }
+}
+
+// Legacy compat
+function gsCopyLink(el) { gsCopyConfigLink(); }
+
+// ===== QR EXPORT với phân đoạn =====
+const QR_SEGMENT_MAX = 2800; // an toàn dưới ngưỡng QR ver 40 ECC L
+
 function gsExportConfigQR() {
   if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
-  const url = gsBuildConfigUrl();
+  // Thử minified trước để giảm khả năng cần phân đoạn
+  const minCfg = {
+    sheetId: GS_CONFIG.sheetId,
+    sheetName: GS_CONFIG.sheetName || 'DiLai',
+    keyObj: gsMinifyKeyObj(GS_CONFIG.keyObj)
+  };
+  const url = gsBuildConfigUrl(minCfg);
+  gsShowSizePreview(url);
   document.getElementById('configLinkBox').style.display = 'none';
   const qrBox = document.getElementById('configQRBox');
   qrBox.style.display = 'block';
-  gsDrawQR(url);
-}
 
-// QR code tự vẽ — dùng qrcodejs offline, hỗ trợ data lớn
-function gsDrawQR(text) {
-  const qrBox = document.getElementById('configQRBox');
-  // Xoá QR cũ nếu có
-  const oldQr = document.getElementById('qrCodeDiv');
-  if (oldQr) oldQr.remove();
-  const canvas = document.getElementById('qrCanvas');
-  canvas.style.display = 'none';
-
-  const qrDiv = document.createElement('div');
-  qrDiv.id = 'qrCodeDiv';
-  qrDiv.style.cssText = 'display:inline-block;border-radius:12px;border:4px solid white;box-shadow:var(--shadow);background:white;padding:8px;';
-  qrBox.insertBefore(qrDiv, canvas);
-
-  // Hiện kích thước link
-  const lenNote = document.getElementById('qrLenNote') || (() => {
-    const el = document.createElement('div');
-    el.id = 'qrLenNote';
-    el.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:8px;font-weight:600;';
-    qrBox.appendChild(el);
-    return el;
-  })();
-  lenNote.textContent = `📏 ${text.length} ký tự (đã nén)`;
-
-  function renderQR() {
-    try {
-      new QRCode(qrDiv, {
-        text: text,
-        width: 240,
-        height: 240,
-        colorDark: '#1a1a2e',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.L
-      });
-      gsLog('ok', `✅ QR tạo thành công — ${text.length} ký tự`);
-    } catch(e) {
-      qrDiv.remove();
-      gsExportConfigLink();
-      showToast('⚠️ Config vẫn quá lớn — dùng Link thay thế');
+  function doRender() {
+    if (url.length <= QR_SEGMENT_MAX) {
+      _renderQRSingle(url);
+    } else {
+      _renderQRSegmented(url);
     }
   }
 
   if (typeof QRCode === 'undefined') {
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    s.onload = renderQR;
-    s.onerror = () => { qrDiv.remove(); gsExportConfigLink(); showToast('⚠️ Không tải được thư viện QR — dùng Link'); };
+    s.onload = doRender;
+    s.onerror = () => {
+      qrBox.style.display = 'none';
+      gsExportConfigLink();
+      showToast('⚠️ Không tải được thư viện QR — dùng Link');
+    };
     document.head.appendChild(s);
   } else {
-    renderQR();
+    doRender();
   }
+}
+
+// Tạo QR đơn
+function _renderQRSingle(text) {
+  document.getElementById('qrSingleWrap').style.display = 'block';
+  document.getElementById('qrSegmentWrap').style.display = 'none';
+
+  const qrDiv = document.getElementById('qrCodeDiv');
+  qrDiv.innerHTML = '';
+  window._qrSingleUrl = text;
+
+  try {
+    new QRCode(qrDiv, {
+      text: text, width: 256, height: 256,
+      colorDark: '#1a1a2e', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.L
+    });
+    document.getElementById('qrSingleNote').textContent =
+      `✅ ${text.length} ký tự — quét bằng camera để mở trên thiết bị kia`;
+    gsLog('ok', `✅ QR tạo thành công — ${text.length} ký tự`);
+  } catch(e) {
+    document.getElementById('qrSingleWrap').style.display = 'none';
+    _renderQRSegmented(text);
+  }
+}
+
+// Tạo QR phân đoạn
+function _renderQRSegmented(text) {
+  document.getElementById('qrSingleWrap').style.display = 'none';
+  document.getElementById('qrSegmentWrap').style.display = 'block';
+
+  const segments = [];
+  for (let i = 0; i < text.length; i += QR_SEGMENT_MAX) {
+    segments.push(text.slice(i, i + QR_SEGMENT_MAX));
+  }
+  const total = segments.length;
+  document.getElementById('qrSegCount').textContent = total;
+
+  const container = document.getElementById('qrSegContainer');
+  container.innerHTML = '';
+  window._qrSegments = segments;
+
+  segments.forEach((seg, idx) => {
+    // Payload: full URL với hash #cfg2seg=<idx+1>/<total>/<data>
+    // Camera điện thoại quét → mở trang → JS xử lý ghép
+    const base = window.location.href.split('#')[0];
+    const payload = `${base}#cfg2seg=${idx+1}/${total}/${seg}`;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'text-align:center;background:white;border-radius:14px;padding:14px;border:2px solid var(--border);box-shadow:var(--shadow-sm);width:100%;max-width:300px';
+    wrap.innerHTML = `
+      <div style="font-size:13px;font-weight:800;color:var(--primary);margin-bottom:8px">
+        Mã QR ${idx+1}/${total}
+        ${idx===0?'<span style="font-size:11px;font-weight:600;color:var(--green)"> — Quét trước</span>':''}
+      </div>
+      <div id="qrSeg${idx}" style="display:inline-block"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:8px">${seg.length} ký tự</div>
+      <button onclick="gsDownloadQR(${idx},'seg')"
+        style="margin-top:8px;padding:6px 14px;font-size:11px;font-weight:700;border:1.5px solid var(--border);border-radius:20px;background:#f8f5f2;color:var(--text);cursor:pointer;font-family:inherit">
+        💾 Lưu ảnh ${idx+1}
+      </button>`;
+    container.appendChild(wrap);
+
+    try {
+      new QRCode(wrap.querySelector(`#qrSeg${idx}`), {
+        text: payload, width: 240, height: 240,
+        colorDark: '#1a1a2e', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.L
+      });
+    } catch(e) {
+      wrap.querySelector(`#qrSeg${idx}`).textContent = '❌ Phân đoạn vẫn quá lớn';
+    }
+  });
+
+  gsLog('ok', `📱 QR phân đoạn — ${total} mã, ${text.length} ký tự tổng`);
+  showToast(`📱 Đã tạo ${total} mã QR — quét lần lượt theo thứ tự`);
+}
+
+// Tải QR về máy
+function gsDownloadQR(idx, mode) {
+  try {
+    let wrap, canvas;
+    if (mode === 'seg') {
+      wrap = document.getElementById(`qrSeg${idx}`);
+    } else {
+      wrap = document.getElementById('qrCodeDiv');
+    }
+    canvas = wrap.querySelector('canvas');
+    if (!canvas) { showToast('⚠️ Không tìm thấy ảnh QR'); return; }
+    const a = document.createElement('a');
+    a.download = mode === 'seg' ? `config_qr_${idx+1}.png` : 'config_qr.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  } catch(e) { showToast('⚠️ Không lưu được ảnh'); }
+}
+
+// ===== LOAD QR SEGMENTED — decode phía nhận =====
+// Bổ sung vào loadGsConfig: hỗ trợ #cfg2seg=<idx>/<total>/<data>
+// Xử lý ghép nhiều segment từ sessionStorage
+function _loadSegmentedConfig() {
+  try {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#cfg2seg=')) return false;
+    const rest = hash.slice(9); // <idx>/<total>/<data>
+    const sep1 = rest.indexOf('/');
+    const sep2 = rest.indexOf('/', sep1+1);
+    const idx = parseInt(rest.slice(0, sep1)) - 1;
+    const total = parseInt(rest.slice(sep1+1, sep2));
+    const data = rest.slice(sep2+1);
+    if (isNaN(idx)||isNaN(total)) return false;
+
+    const segKey = 'mc_cfg_seg_v1';
+    let segs = JSON.parse(sessionStorage.getItem(segKey)||'{}');
+    if (!segs.total || segs.total !== total) segs = { total, parts: {} };
+    segs.parts[idx] = data;
+    sessionStorage.setItem(segKey, JSON.stringify(segs));
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    const gotParts = Object.keys(segs.parts).length;
+    if (gotParts < total) {
+      gsLog('ok', `🔗 Nhận đoạn ${idx+1}/${total} — còn cần ${total-gotParts} mã nữa`);
+      showToast(`✅ Đoạn ${idx+1}/${total} — Quét tiếp mã ${gotParts+1}`);
+      return true; // partial, not done
+    }
+    // Ghép
+    let full = '';
+    for (let i = 0; i < total; i++) full += segs.parts[i];
+    sessionStorage.removeItem(segKey);
+    const json = LZS.decompress(full);
+    const parsed = JSON.parse(json);
+    if (parsed && parsed.sheetId && parsed.keyObj) {
+      window._pendingCfgFromUrl = parsed;
+      gsLog('ok', '🔗 Ghép đủ config từ QR phân đoạn — chờ xác nhận lưu');
+      return 'done';
+    }
+  } catch(e) {}
+  return false;
 }
 
 function setCloudBar(state, text, showSyncBtn) {
@@ -1028,6 +1278,16 @@ async function appStartup() {
     updateGsUI(false);
     // Chuyển sang tab GSheet và điền sẵn
     setTimeout(() => { switchTab('gsheet'); loadGsConfigToUI(); }, 300);
+    return;
+  }
+
+  // QR phân đoạn — chờ quét thêm
+  if (configSrc === 'segment_partial') {
+    loading.classList.add('hidden');
+    setTimeout(() => loading.remove(), 500);
+    setCloudBar('warn', '📱 Đã nhận 1 đoạn QR — vui lòng quét mã tiếp theo', false);
+    updateGsUI(false);
+    showToast('📱 Quét mã QR tiếp theo để hoàn tất');
     return;
   }
 
