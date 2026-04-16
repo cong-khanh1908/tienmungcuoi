@@ -830,35 +830,71 @@ function gsExportConfigQR() {
   const json = JSON.stringify(GS_CONFIG);
   const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
   const url = window.location.href.split('#')[0] + '#cfg=' + encoded;
-  if (url.length > 2900) {
-    showToast('⚠️ Config quá lớn cho QR — dùng Link thay thế');
-    gsExportConfigLink(); return;
-  }
   document.getElementById('configLinkBox').style.display = 'none';
   const qrBox = document.getElementById('configQRBox');
   qrBox.style.display = 'block';
   gsDrawQR(url);
 }
 
-// QR code tự vẽ (không cần thư viện ngoài)
+// QR code tự vẽ — dùng thư viện qrcodejs offline, không giới hạn kích thước
 function gsDrawQR(text) {
-  // Dùng QRServer API để tạo QR
+  const qrBox = document.getElementById('configQRBox');
+  // Xoá QR cũ nếu có
+  const oldQr = document.getElementById('qrCodeDiv');
+  if (oldQr) oldQr.remove();
   const canvas = document.getElementById('qrCanvas');
-  const img = new Image();
-  const apiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(text);
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    canvas.width = 220; canvas.height = 220;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-  };
-  img.onerror = () => {
-    // Fallback: hiện link thay thế
-    document.getElementById('configQRBox').style.display = 'none';
-    gsExportConfigLink();
-    showToast('⚠️ Không tải được QR — đã hiện link');
-  };
-  img.src = apiUrl;
+  canvas.style.display = 'none';
+
+  // Tạo div chứa QR mới
+  const qrDiv = document.createElement('div');
+  qrDiv.id = 'qrCodeDiv';
+  qrDiv.style.cssText = 'display:inline-block;border-radius:12px;border:4px solid white;box-shadow:var(--shadow);background:white;padding:8px;';
+  qrBox.insertBefore(qrDiv, canvas);
+
+  function renderQR() {
+    try {
+      new QRCode(qrDiv, {
+        text: text,
+        width: 220,
+        height: 220,
+        colorDark: '#1a1a2e',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.L // dùng L để chứa được nhiều dữ liệu nhất
+      });
+    } catch(e) {
+      qrDiv.remove();
+      gsExportConfigLink();
+      showToast('⚠️ Config quá lớn cho QR — dùng Link thay thế');
+    }
+  }
+
+  // Load thư viện qrcodejs nếu chưa có
+  if (typeof QRCode === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    script.onload = renderQR;
+    script.onerror = () => {
+      // Fallback về API nếu CDN lỗi
+      qrDiv.remove();
+      canvas.style.display = '';
+      const img = new Image();
+      const apiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=L&data=' + encodeURIComponent(text);
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        canvas.width = 220; canvas.height = 220;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+      };
+      img.onerror = () => {
+        document.getElementById('configQRBox').style.display = 'none';
+        gsExportConfigLink();
+        showToast('⚠️ Không tải được QR — đã hiện link');
+      };
+      img.src = apiUrl;
+    };
+    document.head.appendChild(script);
+  } else {
+    renderQR();
+  }
 }
 
 function setCloudBar(state, text, showSyncBtn) {
