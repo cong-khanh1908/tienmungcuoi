@@ -8,7 +8,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="config.js" onerror="console.warn('config.js not found')"></script>
 <title>💍 Tra Cứu Tiền Mừng Cưới</title>
 <style>
   :root {
@@ -543,86 +542,116 @@
 
   <!-- GSHEET TAB -->
   <div class="tab-panel" id="panel-gsheet" role="tabpanel">
+
+    <!-- TRẠNG THÁI KẾT NỐI -->
     <div class="gsheet-panel">
       <h3>☁️ Đồng bộ Google Sheets</h3>
-
-      <div id="configJsBanner" style="display:none" class="tip-box">
-        <strong>✅ Đang dùng config.js từ GitHub</strong> — cấu hình dùng chung mọi thiết bị.
-        Để thay đổi, chỉnh file <code>config.js</code> rồi upload lại.
-      </div>
-
       <div class="gsheet-status warn" id="gsheetStatusBox">
         <span class="sync-indicator" id="gsDot"></span>
-        <span id="gsStatusText">Chưa cấu hình — nhập JSON key bên dưới</span>
+        <span id="gsStatusText">Chưa cấu hình</span>
       </div>
-
-      <div class="form-field">
-        <label>🔑 JSON Key (Service Account) — bỏ qua nếu đã có config.js</label>
-        <textarea class="gsheet-key-input" id="gsKeyInput"
-          placeholder='Dán toàn bộ nội dung file .json vào đây:
-{"type":"service_account","project_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...","client_email":"...@....iam.gserviceaccount.com",...}'></textarea>
-      </div>
-
-      <div class="form-field">
-        <label>📋 Spreadsheet ID</label>
-        <input type="text" id="gsSheetId" placeholder="Lấy từ URL: ...spreadsheets/d/[ID]/edit"
-               style="font-family:'Courier New',monospace;font-size:12px">
-      </div>
-
-      <div class="form-field">
-        <label>📄 Tên Sheet (Tab)</label>
-        <input type="text" id="gsSheetName" placeholder="Ví dụ: DiLai" value="DiLai">
-      </div>
-
       <div class="gsheet-actions">
-        <button class="btn-gsheet primary" onclick="gsSaveConfig()">💾 Lưu cấu hình</button>
-        <button class="btn-gsheet primary" onclick="gsSyncAll()" id="btnSyncAll" disabled>☁️ Đồng bộ tất cả</button>
+        <button class="btn-gsheet primary" onclick="gsSyncAll()" id="btnSyncAll" disabled>☁️ Đồng bộ lên Sheets</button>
+        <button class="btn-gsheet secondary" onclick="gsManualSync()" id="btnPull" disabled>⬇️ Tải về</button>
       </div>
       <div class="gsheet-actions">
         <button class="btn-gsheet secondary" onclick="gsTestConnection()" id="btnTest" disabled>🔌 Kiểm tra kết nối</button>
         <button class="btn-gsheet danger" onclick="gsClearConfig()">🗑 Xóa cấu hình</button>
       </div>
-
       <div class="gsheet-log" id="gsLog"><div style="color:#888">Nhật ký hoạt động...</div></div>
     </div>
 
+    <!-- NHẬP CẤU HÌNH MỚI -->
     <div class="gsheet-panel">
-      <h3>📖 Hướng dẫn cấu hình</h3>
+      <h3>⚙️ Cấu hình kết nối</h3>
 
-      <div class="tip-box" style="margin-bottom:12px">
-        <strong>⭐ Cách được khuyến nghị: dùng config.js trên GitHub</strong><br>
-        Chỉ cấu hình 1 lần — tự động dùng trên mọi điện thoại, máy tính.
+      <div class="tip-box" style="margin-bottom:14px">
+        <strong>💡 Cấu hình 1 lần, dùng mãi.</strong> Sau khi lưu, thiết bị này tự kết nối mỗi lần mở. Muốn dùng trên máy khác → nhấn <strong>📲 Xuất QR / Link</strong> bên dưới.
       </div>
 
-      <div style="font-size:var(--fs-xs);color:var(--text-muted);line-height:1.9">
-        <p><strong style="color:var(--text)">① Tạo Google Sheets + Service Account:</strong></p>
-        <p style="padding-left:12px">• Vào <a href="https://console.cloud.google.com" target="_blank" style="color:var(--blue)">Google Cloud Console</a> → Tạo project → Bật Sheets API</p>
-        <p style="padding-left:12px">• IAM &amp; Admin → Service Accounts → Tạo mới → Tạo JSON key → Tải về</p>
-        <p style="padding-left:12px">• Tạo Google Sheets → Chia sẻ với email Service Account (quyền Editor)</p>
+      <div id="importConfigBanner" style="display:none" class="tip-box" style="background:#e3f0ff;border-color:#90c0f0;color:#1a3a7a">
+        ✅ <strong>Đã nhận cấu hình từ link chia sẻ!</strong> Nhấn <em>Lưu cấu hình</em> để áp dụng.
+      </div>
 
-        <p style="margin-top:10px"><strong style="color:var(--text)">② Sửa config.js (quan trọng!):</strong></p>
-        <p style="padding-left:12px">• Điền <code>sheetId</code> — lấy từ URL: <code>...spreadsheets/d/<strong>[ID]</strong>/edit</code></p>
-        <p style="padding-left:12px">• Dán nội dung file JSON key vào phần <code>keyObj</code></p>
-
-        <p style="margin-top:10px"><strong style="color:var(--text)">③ Upload lên GitHub Pages:</strong></p>
-        <p style="padding-left:12px">• Upload cả <code>index.html</code> + <code>config.js</code> vào cùng repo</p>
-        <p style="padding-left:12px">• Settings → Pages → Deploy from branch → main</p>
-
-        <div class="tip-box warn" style="margin-top:12px">
-          🔒 <strong>Bảo mật:</strong> Đặt repo ở chế độ <strong>Private</strong> để bảo vệ JSON key.
-        </div>
+      <div class="form-field">
+        <label>🔑 JSON Key (Service Account)</label>
+        <textarea class="gsheet-key-input" id="gsKeyInput"
+          placeholder='Dán toàn bộ nội dung file .json vào đây:
+{"type":"service_account","project_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...","client_email":"...@....iam.gserviceaccount.com",...}'></textarea>
+      </div>
+      <div class="form-field">
+        <label>📋 Spreadsheet ID</label>
+        <input type="text" id="gsSheetId" placeholder="Lấy từ URL: ...spreadsheets/d/[ID]/edit"
+               style="font-family:'Courier New',monospace;font-size:12px">
+      </div>
+      <div class="form-field">
+        <label>📄 Tên Sheet (Tab)</label>
+        <input type="text" id="gsSheetName" placeholder="Ví dụ: DiLai" value="DiLai">
+      </div>
+      <div class="gsheet-actions">
+        <button class="btn-gsheet primary" onclick="gsSaveConfig()">💾 Lưu cấu hình</button>
       </div>
     </div>
 
+    <!-- CHUYỂN SANG THIẾT BỊ KHÁC -->
+    <div class="gsheet-panel" id="shareConfigPanel" style="display:none">
+      <h3>📲 Chuyển cấu hình sang thiết bị khác</h3>
+      <div class="tip-box" style="margin-bottom:12px">
+        Tạo link chứa cấu hình đã mã hoá. Mở link đó trên điện thoại / máy tính khác → cấu hình tự điền sẵn → nhấn Lưu là xong. <strong>Chỉ chia sẻ cho bản thân, không gửi cho người khác.</strong>
+      </div>
+      <div class="gsheet-actions">
+        <button class="btn-gsheet primary" onclick="gsExportConfigLink()">🔗 Tạo Link cấu hình</button>
+        <button class="btn-gsheet secondary" onclick="gsExportConfigQR()">📱 Hiện QR Code</button>
+      </div>
+      <div id="configLinkBox" style="display:none;margin-top:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px">Link cấu hình (nhấn để copy):</div>
+        <div id="configLinkText" onclick="gsCopyLink(this)"
+          style="background:#f2ede8;border-radius:8px;padding:10px 12px;font-size:11px;font-family:monospace;word-break:break-all;cursor:pointer;border:1.5px solid var(--border);transition:background 0.2s"
+          title="Nhấn để sao chép"></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px">⚠️ Link chứa private key — chỉ gửi cho bản thân qua Zalo/Telegram riêng tư.</div>
+      </div>
+      <div id="configQRBox" style="display:none;margin-top:12px;text-align:center">
+        <canvas id="qrCanvas" style="border-radius:12px;border:4px solid white;box-shadow:var(--shadow)"></canvas>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px">Quét bằng camera điện thoại để mở link trên thiết bị đó.</div>
+      </div>
+    </div>
+
+    <!-- XUẤT / NHẬP DỮ LIỆU -->
     <div class="gsheet-panel">
-      <h3>📤 Xuất / Nhập dữ liệu</h3>
+      <h3>📤 Xuất / Nhập dữ liệu đi lại</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-gsheet primary" onclick="exportJSON()">📄 Xuất JSON</button>
         <button class="btn-gsheet secondary" onclick="exportCSV()">📊 Xuất CSV</button>
         <button class="btn-gsheet secondary" onclick="importJSON()">📥 Nhập JSON</button>
       </div>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="doImport(event)">
-      <p style="font-size:11px;color:var(--text-muted);margin-top:10px">Xuất CSV để mở bằng Excel. Xuất JSON để sao lưu hoặc nhập lại.</p>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:10px">Xuất CSV để mở bằng Excel. Xuất JSON để sao lưu hoặc nhập lại trên thiết bị khác.</p>
+    </div>
+
+    <!-- HƯỚNG DẪN -->
+    <div class="gsheet-panel">
+      <h3>📖 Hướng dẫn lần đầu</h3>
+      <div style="font-size:var(--fs-xs);color:var(--text-muted);line-height:1.9">
+        <p><strong style="color:var(--text)">① Tạo Service Account (Google Cloud):</strong></p>
+        <p style="padding-left:12px">• Vào <a href="https://console.cloud.google.com" target="_blank" style="color:var(--blue)">console.cloud.google.com</a> → Chọn project → Bật <strong>Google Sheets API</strong></p>
+        <p style="padding-left:12px">• IAM &amp; Admin → Service Accounts → Tạo mới → Tạo JSON key → Tải file .json về</p>
+
+        <p style="margin-top:10px"><strong style="color:var(--text)">② Cấp quyền cho Google Sheets:</strong></p>
+        <p style="padding-left:12px">• Mở Google Sheets → Chia sẻ → Dán email service account (trong file .json) → quyền <strong>Editor</strong></p>
+
+        <p style="margin-top:10px"><strong style="color:var(--text)">③ Nhập vào app (tab GSheet này):</strong></p>
+        <p style="padding-left:12px">• Dán nội dung file .json vào ô JSON Key</p>
+        <p style="padding-left:12px">• Nhập Spreadsheet ID (lấy từ URL sheets)</p>
+        <p style="padding-left:12px">• Nhấn <strong>Lưu cấu hình</strong> — xong! App tự nhớ mãi mãi.</p>
+
+        <p style="margin-top:10px"><strong style="color:var(--text)">④ Chuyển sang điện thoại / máy khác:</strong></p>
+        <p style="padding-left:12px">• Nhấn <strong>📲 Tạo Link cấu hình</strong> hoặc <strong>📱 Hiện QR</strong> → mở trên thiết bị mới → nhấn Lưu.</p>
+        <p style="padding-left:12px">• Không cần cấu hình lại từ đầu, không cần GitHub.</p>
+
+        <div class="tip-box warn" style="margin-top:12px">
+          🔒 <strong>Bảo mật:</strong> Config lưu trong bộ nhớ trình duyệt (localStorage), không upload lên bất kỳ server nào. Link chia sẻ chứa private key — chỉ gửi cho chính bạn.
+        </div>
+      </div>
     </div>
   </div>
 
@@ -719,23 +748,40 @@ let _gsTokenCache = null;
 let _gsTokenExpiry = 0;
 
 function loadGsConfig() {
-  // 1. From config.js (GitHub shared config) — check sheetId is not empty
+  // 1. Từ URL hash (#cfg=...) — dùng khi mở link chuyển thiết bị
+  try {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#cfg=')) {
+      const encoded = hash.slice(5);
+      const decoded = atob(decodeURIComponent(encoded));
+      const parsed = JSON.parse(decoded);
+      if (parsed && parsed.sheetId && parsed.keyObj && parsed.keyObj.private_key) {
+        // Không tự lưu — hiện banner để người dùng xác nhận
+        window._pendingCfgFromUrl = parsed;
+        // Xóa hash khỏi URL để sạch
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        gsLog('ok', '🔗 Nhận cấu hình từ link — chờ xác nhận lưu');
+        return 'url';
+      }
+    }
+  } catch(e) {}
+
+  // 2. Từ config.js (legacy — vẫn hỗ trợ nếu có)
   if (window.GS_DEFAULT_CONFIG &&
       window.GS_DEFAULT_CONFIG.sheetId &&
       window.GS_DEFAULT_CONFIG.sheetId.trim() !== "" &&
       window.GS_DEFAULT_CONFIG.keyObj &&
       window.GS_DEFAULT_CONFIG.keyObj.private_key) {
     GS_CONFIG = window.GS_DEFAULT_CONFIG;
-    gsLog('ok', '☁️ Đã tải config từ config.js (GitHub)');
+    gsLog('ok', '☁️ Đã tải config từ config.js');
     return 'remote';
   }
-  // 2. From localStorage (manual config)
+
+  // 3. Từ localStorage (cấu hình đã lưu trước đó)
   try {
-    const raw = localStorage.getItem(GS_CONFIG_KEY);
-    // Also try legacy key
-    const rawLegacy = raw || localStorage.getItem('mc_gs_config_v1');
-    if (rawLegacy) {
-      const parsed = JSON.parse(rawLegacy);
+    const raw = localStorage.getItem(GS_CONFIG_KEY) || localStorage.getItem('mc_gs_config_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw);
       if (parsed && parsed.sheetId && parsed.sheetId.trim() !== "" && parsed.keyObj && parsed.keyObj.private_key) {
         GS_CONFIG = parsed;
         gsLog('ok', '💾 Đã tải config từ bộ nhớ thiết bị');
@@ -748,6 +794,71 @@ function loadGsConfig() {
 
 function saveGsConfig(cfg) {
   try { GS_CONFIG = cfg; localStorage.setItem(GS_CONFIG_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
+
+// Xuất link cấu hình để chuyển sang thiết bị khác
+function gsExportConfigLink() {
+  if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
+  const json = JSON.stringify(GS_CONFIG);
+  const encoded = encodeURIComponent(btoa(json));
+  const url = window.location.href.split('#')[0] + '#cfg=' + encoded;
+  const box = document.getElementById('configLinkBox');
+  const txt = document.getElementById('configLinkText');
+  box.style.display = 'block';
+  document.getElementById('configQRBox').style.display = 'none';
+  txt.textContent = url;
+  txt.style.background = '#f2ede8';
+}
+
+function gsCopyLink(el) {
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    el.style.background = '#d4edda';
+    showToast('✅ Đã sao chép link!');
+    setTimeout(() => el.style.background = '#f2ede8', 1500);
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✅ Đã sao chép!');
+  });
+}
+
+function gsExportConfigQR() {
+  if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
+  const json = JSON.stringify(GS_CONFIG);
+  const encoded = encodeURIComponent(btoa(json));
+  const url = window.location.href.split('#')[0] + '#cfg=' + encoded;
+  if (url.length > 2900) {
+    showToast('⚠️ Config quá lớn cho QR — dùng Link thay thế');
+    gsExportConfigLink(); return;
+  }
+  document.getElementById('configLinkBox').style.display = 'none';
+  const qrBox = document.getElementById('configQRBox');
+  qrBox.style.display = 'block';
+  gsDrawQR(url);
+}
+
+// QR code tự vẽ (không cần thư viện ngoài)
+function gsDrawQR(text) {
+  // Dùng QRServer API để tạo QR
+  const canvas = document.getElementById('qrCanvas');
+  const img = new Image();
+  const apiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(text);
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    canvas.width = 220; canvas.height = 220;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+  };
+  img.onerror = () => {
+    // Fallback: hiện link thay thế
+    document.getElementById('configQRBox').style.display = 'none';
+    gsExportConfigLink();
+    showToast('⚠️ Không tải được QR — đã hiện link');
+  };
+  img.src = apiUrl;
 }
 
 function setCloudBar(state, text, showSyncBtn) {
@@ -766,6 +877,18 @@ async function appStartup() {
   const loading = document.getElementById('appLoading');
   const loadText = document.getElementById('appLoadingText');
   const configSrc = loadGsConfig();
+
+  // Nếu có config từ URL → hiển thị form để user nhấn Lưu (không tự kết nối)
+  if (configSrc === 'url') {
+    loading.classList.add('hidden');
+    setTimeout(() => loading.remove(), 500);
+    setCloudBar('warn', '🔗 Nhận cấu hình từ link — vào tab GSheet để lưu', true);
+    updateGsUI(false);
+    // Chuyển sang tab GSheet và điền sẵn
+    setTimeout(() => { switchTab('gsheet'); loadGsConfigToUI(); }, 300);
+    return;
+  }
+
   if (!configSrc) {
     loading.classList.add('hidden');
     setTimeout(() => loading.remove(), 500);
@@ -992,10 +1115,14 @@ function gsSaveConfig() {
     }
   } else if (GS_CONFIG && GS_CONFIG.keyObj) {
     keyObj = GS_CONFIG.keyObj;
+  } else if (window._pendingCfgFromUrl && window._pendingCfgFromUrl.keyObj) {
+    keyObj = window._pendingCfgFromUrl.keyObj;
   } else {
     showToast('⚠️ Vui lòng nhập JSON key!'); return;
   }
   saveGsConfig({ keyObj, sheetId, sheetName });
+  window._pendingCfgFromUrl = null;
+  document.getElementById('importConfigBanner').style.display = 'none';
   updateGsUI(true);
   showToast('✅ Đã lưu cấu hình! Đang đồng bộ...');
   gsLog('ok', 'Cấu hình đã lưu — sheet: ' + sheetName + ' | ID: ' + sheetId.slice(0,20) + '...');
@@ -1019,6 +1146,7 @@ function gsClearConfig() {
   document.getElementById('gsKeyInput').value = '';
   document.getElementById('gsSheetId').value = '';
   document.getElementById('gsSheetName').value = 'DiLai';
+  document.getElementById('shareConfigPanel').style.display = 'none';
   updateGsUI(false);
   setCloudBar('local', '📱 Chế độ cục bộ — chưa cấu hình', true);
   showToast('🗑 Đã xóa cấu hình');
@@ -1031,33 +1159,41 @@ function updateGsUI(hasConfig) {
   const syncDot = document.getElementById('syncDot');
   const syncLabel = document.getElementById('syncLabel');
   const btnSync = document.getElementById('btnSyncAll');
+  const btnPull = document.getElementById('btnPull');
   const btnTest = document.getElementById('btnTest');
+  const sharePanel = document.getElementById('shareConfigPanel');
   if (hasConfig && GS_CONFIG) {
     statusBox.className = 'gsheet-status ok';
     gsDot.className = 'sync-indicator synced';
-    gsText.textContent = '✅ ' + GS_CONFIG.keyObj.client_email + ' → Sheet: ' + (GS_CONFIG.sheetName||'DiLai');
+    gsText.textContent = '✅ ' + GS_CONFIG.keyObj.client_email + ' → ' + (GS_CONFIG.sheetName||'DiLai');
     syncDot.className = 'sync-indicator synced'; syncLabel.textContent = 'GSheet ✓';
-    btnSync.disabled = false; btnTest.disabled = false;
+    btnSync.disabled = false; btnPull.disabled = false; btnTest.disabled = false;
+    if (sharePanel) sharePanel.style.display = 'block';
   } else {
     statusBox.className = 'gsheet-status warn';
-    gsDot.className = 'sync-indicator'; gsText.textContent = 'Chưa cấu hình — nhập JSON key bên dưới hoặc chỉnh config.js';
+    gsDot.className = 'sync-indicator';
+    gsText.textContent = 'Chưa cấu hình — nhập JSON key bên dưới';
     syncDot.className = 'sync-indicator'; syncLabel.textContent = 'GSheet';
-    btnSync.disabled = true; btnTest.disabled = true;
+    btnSync.disabled = true; btnPull.disabled = true; btnTest.disabled = true;
+    if (sharePanel) sharePanel.style.display = 'none';
   }
 }
 
 function loadGsConfigToUI() {
-  if (!GS_CONFIG) return;
-  const cfgFromGitHub = window.GS_DEFAULT_CONFIG && window.GS_DEFAULT_CONFIG.sheetId === GS_CONFIG.sheetId;
-  const banner = document.getElementById('configJsBanner');
-  if (cfgFromGitHub) {
-    if (banner) banner.style.display = 'block';
-    document.getElementById('gsKeyInput').placeholder = '✅ Đang dùng config.js từ GitHub — không cần nhập lại';
-    document.getElementById('gsKeyInput').value = '';
-  } else {
-    if (banner) banner.style.display = 'none';
-    document.getElementById('gsKeyInput').value = JSON.stringify(GS_CONFIG.keyObj, null, 2);
+  // Kiểm tra pending config từ URL hash
+  if (window._pendingCfgFromUrl) {
+    const p = window._pendingCfgFromUrl;
+    document.getElementById('importConfigBanner').style.display = 'block';
+    document.getElementById('gsKeyInput').value = JSON.stringify(p.keyObj, null, 2);
+    document.getElementById('gsSheetId').value = p.sheetId || '';
+    document.getElementById('gsSheetName').value = p.sheetName || 'DiLai';
+    return;
   }
+  if (!GS_CONFIG) return;
+  document.getElementById('importConfigBanner').style.display = 'none';
+  // Chỉ hiện email thay vì key đầy đủ
+  document.getElementById('gsKeyInput').value = '';
+  document.getElementById('gsKeyInput').placeholder = '✅ Key đang dùng: ' + (GS_CONFIG.keyObj.client_email||'') + ' — để trống nếu không đổi';
   document.getElementById('gsSheetId').value = GS_CONFIG.sheetId || '';
   document.getElementById('gsSheetName').value = GS_CONFIG.sheetName || 'DiLai';
 }
