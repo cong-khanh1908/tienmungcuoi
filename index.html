@@ -747,22 +747,129 @@ let GS_SYNCING = false;
 let _gsTokenCache = null;
 let _gsTokenExpiry = 0;
 
+// ===== NÉN CONFIG — giảm kích thước link/QR ~65% =====
+// LZ-string mini (chỉ dùng compressToEncodedURIComponent / decompressFromEncodedURIComponent)
+const LZS = (() => {
+  // LZ-based compression — produces URL-safe output
+  // Source: lz-string 1.5.0 (MIT) — inlined để không cần CDN
+  const keyStrUriSafe = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$';
+  const baseRev = {};
+  for (let i = 0; i < 66; i++) baseRev[keyStrUriSafe.charAt(i)] = i;
+
+  function _compress(str, bitsPerChar, getCharFrom) {
+    if (!str) return '';
+    let i, value, ctx = {}, ctxData = '', ctxDataVal = 0, ctxDataPos = 0, ctxEnlargeIn = 2, ctxDictSize = 3,
+        ctxNumBits = 2, ctxWc, ctxW = '', result = [], dictC = {}, ii;
+    for (ii = 0; ii < str.length; ii += 1) {
+      const c = str.charAt(ii);
+      if (!Object.prototype.hasOwnProperty.call(ctx, c)) { ctx[c] = ctxDictSize++; dictC[c] = true; }
+      ctxWc = ctxW + c;
+      if (Object.prototype.hasOwnProperty.call(ctx, ctxWc)) { ctxW = ctxWc; } else {
+        if (Object.prototype.hasOwnProperty.call(dictC, ctxW)) {
+          if (ctxW.charCodeAt(0) < 256) {
+            for (i = 0; i < ctxNumBits; i++) { ctxDataVal = (ctxDataVal << 1); if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+            value = ctxW.charCodeAt(0);
+            for (i = 0; i < 8; i++) { ctxDataVal = (ctxDataVal << 1) | (value & 1); value >>= 1; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+          } else {
+            value = 1; for (i = 0; i < ctxNumBits; i++) { ctxDataVal = (ctxDataVal << 1) | value; value = 0; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+            value = ctxW.charCodeAt(0);
+            for (i = 0; i < 16; i++) { ctxDataVal = (ctxDataVal << 1) | (value & 1); value >>= 1; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+          }
+          if (--ctxEnlargeIn === 0) { ctxEnlargeIn = Math.pow(2, ctxNumBits); ctxNumBits++; }
+          delete dictC[ctxW];
+        } else {
+          value = ctx[ctxW];
+          for (i = 0; i < ctxNumBits; i++) { ctxDataVal = (ctxDataVal << 1) | (value & 1); value >>= 1; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+        }
+        if (--ctxEnlargeIn === 0) { ctxEnlargeIn = Math.pow(2, ctxNumBits); ctxNumBits++; }
+        ctx[ctxWc] = ctxDictSize++;
+        ctxW = String(c);
+      }
+    }
+    if (ctxW !== '') {
+      if (Object.prototype.hasOwnProperty.call(dictC, ctxW)) {
+        if (ctxW.charCodeAt(0) < 256) {
+          for (i = 0; i < ctxNumBits; i++) { ctxDataVal = (ctxDataVal << 1); if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+          value = ctxW.charCodeAt(0);
+          for (i = 0; i < 8; i++) { ctxDataVal = (ctxDataVal << 1) | (value & 1); value >>= 1; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+        } else {
+          value = 1; for (i = 0; i < ctxNumBits; i++) { ctxDataVal = (ctxDataVal << 1) | value; value = 0; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+          value = ctxW.charCodeAt(0);
+          for (i = 0; i < 16; i++) { ctxDataVal = (ctxDataVal << 1) | (value & 1); value >>= 1; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+        }
+        if (--ctxEnlargeIn === 0) { ctxEnlargeIn = Math.pow(2, ctxNumBits); ctxNumBits++; }
+        delete dictC[ctxW];
+      } else {
+        value = ctx[ctxW];
+        for (i = 0; i < ctxNumBits; i++) { ctxDataVal = (ctxDataVal << 1) | (value & 1); value >>= 1; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+      }
+      if (--ctxEnlargeIn === 0) { ctxEnlargeIn = Math.pow(2, ctxNumBits); ctxNumBits++; }
+    }
+    value = 2;
+    for (i = 0; i < ctxNumBits; i++) { ctxDataVal = (ctxDataVal << 1) | (value & 1); value >>= 1; if (++ctxDataPos === bitsPerChar) { ctxDataPos = 0; result.push(getCharFrom(ctxDataVal)); ctxDataVal = 0; } }
+    while (true) { ctxDataVal = (ctxDataVal << 1); if (ctxDataPos + 1 === bitsPerChar) { result.push(getCharFrom(ctxDataVal)); break; } else ctxDataPos++; }
+    return result.join('');
+  }
+
+  function _decompress(len, resetVal, getNextVal) {
+    const dict = []; let next, enlargeIn = 4, dictSize = 4, numBits = 3, entry = '', result = [], i, w, bits = 0, maxpower, power, c, data = { val: getNextVal(0), pos: resetVal, index: 1 };
+    for (i = 0; i < 3; i++) dict[i] = i;
+    maxpower = Math.pow(2, 2); power = 1;
+    while (power !== maxpower) { bits = (bits << 1) | data.val & 1; data.val >>= 1; if (--data.pos === 0) { data.pos = resetVal; data.val = getNextVal(data.index++); } power <<= 1; }
+    switch (next = bits) {
+      case 0: maxpower = Math.pow(2, 8); power = 1; bits = 0; while (power !== maxpower) { bits = (bits << 1) | data.val & 1; data.val >>= 1; if (--data.pos === 0) { data.pos = resetVal; data.val = getNextVal(data.index++); } power <<= 1; } c = String.fromCharCode(bits); break;
+      case 1: maxpower = Math.pow(2, 16); power = 1; bits = 0; while (power !== maxpower) { bits = (bits << 1) | data.val & 1; data.val >>= 1; if (--data.pos === 0) { data.pos = resetVal; data.val = getNextVal(data.index++); } power <<= 1; } c = String.fromCharCode(bits); break;
+      case 2: return '';
+    }
+    dict[3] = c; w = c; result.push(c);
+    while (true) {
+      if (data.index > len) return '';
+      maxpower = Math.pow(2, numBits); power = 1; bits = 0;
+      while (power !== maxpower) { bits = (bits << 1) | data.val & 1; data.val >>= 1; if (--data.pos === 0) { data.pos = resetVal; data.val = getNextVal(data.index++); } power <<= 1; }
+      switch (c = bits) {
+        case 0: maxpower = Math.pow(2, 8); power = 1; bits = 0; while (power !== maxpower) { bits = (bits << 1) | data.val & 1; data.val >>= 1; if (--data.pos === 0) { data.pos = resetVal; data.val = getNextVal(data.index++); } power <<= 1; } dict[dictSize++] = String.fromCharCode(bits); c = dictSize - 1; if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; } break;
+        case 1: maxpower = Math.pow(2, 16); power = 1; bits = 0; while (power !== maxpower) { bits = (bits << 1) | data.val & 1; data.val >>= 1; if (--data.pos === 0) { data.pos = resetVal; data.val = getNextVal(data.index++); } power <<= 1; } dict[dictSize++] = String.fromCharCode(bits); c = dictSize - 1; if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; } break;
+        case 2: return result.join('');
+      }
+      if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+      if (dict[c]) { entry = dict[c]; } else { if (c === dictSize) { entry = w + w.charAt(0); } else return null; }
+      result.push(entry);
+      dict[dictSize++] = w + entry.charAt(0);
+      if (--enlargeIn === 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+      w = entry;
+    }
+  }
+
+  return {
+    compress: (str) => _compress(str, 6, (a) => keyStrUriSafe.charAt(a)),
+    decompress: (str) => {
+      if (!str) return '';
+      return _decompress(str.length, 32, (i) => baseRev[str.charAt(i)]);
+    }
+  };
+})();
+
 function loadGsConfig() {
-  // 1. Từ URL hash (#cfg=...) — dùng khi mở link chuyển thiết bị
+  // 1. Từ URL hash (#cfg2=nén hoặc #cfg=cũ) — dùng khi mở link chuyển thiết bị
   try {
     const hash = window.location.hash;
-    if (hash && hash.startsWith('#cfg=')) {
+    let parsed = null;
+    if (hash && hash.startsWith('#cfg2=')) {
+      // Định dạng mới — nén LZ
+      const compressed = hash.slice(6);
+      const json = LZS.decompress(compressed);
+      parsed = JSON.parse(json);
+    } else if (hash && hash.startsWith('#cfg=')) {
+      // Định dạng cũ — base64
       const encoded = hash.slice(5);
       const decoded = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
-      const parsed = JSON.parse(decoded);
-      if (parsed && parsed.sheetId && parsed.keyObj && parsed.keyObj.private_key) {
-        // Không tự lưu — hiện banner để người dùng xác nhận
-        window._pendingCfgFromUrl = parsed;
-        // Xóa hash khỏi URL để sạch
-        history.replaceState(null, '', window.location.pathname + window.location.search);
-        gsLog('ok', '🔗 Nhận cấu hình từ link — chờ xác nhận lưu');
-        return 'url';
-      }
+      parsed = JSON.parse(decoded);
+    }
+    if (parsed && parsed.sheetId && parsed.keyObj && parsed.keyObj.private_key) {
+      window._pendingCfgFromUrl = parsed;
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      gsLog('ok', '🔗 Nhận cấu hình từ link — chờ xác nhận lưu');
+      return 'url';
     }
   } catch(e) {}
 
@@ -796,18 +903,27 @@ function saveGsConfig(cfg) {
   try { GS_CONFIG = cfg; localStorage.setItem(GS_CONFIG_KEY, JSON.stringify(cfg)); } catch(e) {}
 }
 
+function gsBuildConfigUrl() {
+  const json = JSON.stringify(GS_CONFIG);
+  const compressed = LZS.compress(json);
+  const base = window.location.href.split('#')[0];
+  return base + '#cfg2=' + compressed;
+}
+
 // Xuất link cấu hình để chuyển sang thiết bị khác
 function gsExportConfigLink() {
   if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
-  const json = JSON.stringify(GS_CONFIG);
-  const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
-  const url = window.location.href.split('#')[0] + '#cfg=' + encoded;
+  const url = gsBuildConfigUrl();
   const box = document.getElementById('configLinkBox');
   const txt = document.getElementById('configLinkText');
   box.style.display = 'block';
   document.getElementById('configQRBox').style.display = 'none';
   txt.textContent = url;
   txt.style.background = '#f2ede8';
+  // Hiện thêm thông tin kích thước
+  const len = url.length;
+  const pct = Math.round((1 - len / (window.location.href.split('#')[0].length + 1 + JSON.stringify(GS_CONFIG).length * 1.4)) * 100);
+  gsLog('ok', `🔗 Link tạo xong — ${len} ký tự`);
 }
 
 function gsCopyLink(el) {
@@ -827,16 +943,14 @@ function gsCopyLink(el) {
 
 function gsExportConfigQR() {
   if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
-  const json = JSON.stringify(GS_CONFIG);
-  const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
-  const url = window.location.href.split('#')[0] + '#cfg=' + encoded;
+  const url = gsBuildConfigUrl();
   document.getElementById('configLinkBox').style.display = 'none';
   const qrBox = document.getElementById('configQRBox');
   qrBox.style.display = 'block';
   gsDrawQR(url);
 }
 
-// QR code tự vẽ — dùng thư viện qrcodejs offline, không giới hạn kích thước
+// QR code tự vẽ — dùng qrcodejs offline, hỗ trợ data lớn
 function gsDrawQR(text) {
   const qrBox = document.getElementById('configQRBox');
   // Xoá QR cũ nếu có
@@ -845,53 +959,45 @@ function gsDrawQR(text) {
   const canvas = document.getElementById('qrCanvas');
   canvas.style.display = 'none';
 
-  // Tạo div chứa QR mới
   const qrDiv = document.createElement('div');
   qrDiv.id = 'qrCodeDiv';
   qrDiv.style.cssText = 'display:inline-block;border-radius:12px;border:4px solid white;box-shadow:var(--shadow);background:white;padding:8px;';
   qrBox.insertBefore(qrDiv, canvas);
 
+  // Hiện kích thước link
+  const lenNote = document.getElementById('qrLenNote') || (() => {
+    const el = document.createElement('div');
+    el.id = 'qrLenNote';
+    el.style.cssText = 'font-size:12px;color:var(--text-muted);margin-top:8px;font-weight:600;';
+    qrBox.appendChild(el);
+    return el;
+  })();
+  lenNote.textContent = `📏 ${text.length} ký tự (đã nén)`;
+
   function renderQR() {
     try {
       new QRCode(qrDiv, {
         text: text,
-        width: 220,
-        height: 220,
+        width: 240,
+        height: 240,
         colorDark: '#1a1a2e',
         colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.L // dùng L để chứa được nhiều dữ liệu nhất
+        correctLevel: QRCode.CorrectLevel.L
       });
+      gsLog('ok', `✅ QR tạo thành công — ${text.length} ký tự`);
     } catch(e) {
       qrDiv.remove();
       gsExportConfigLink();
-      showToast('⚠️ Config quá lớn cho QR — dùng Link thay thế');
+      showToast('⚠️ Config vẫn quá lớn — dùng Link thay thế');
     }
   }
 
-  // Load thư viện qrcodejs nếu chưa có
   if (typeof QRCode === 'undefined') {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    script.onload = renderQR;
-    script.onerror = () => {
-      // Fallback về API nếu CDN lỗi
-      qrDiv.remove();
-      canvas.style.display = '';
-      const img = new Image();
-      const apiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=L&data=' + encodeURIComponent(text);
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        canvas.width = 220; canvas.height = 220;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-      };
-      img.onerror = () => {
-        document.getElementById('configQRBox').style.display = 'none';
-        gsExportConfigLink();
-        showToast('⚠️ Không tải được QR — đã hiện link');
-      };
-      img.src = apiUrl;
-    };
-    document.head.appendChild(script);
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = renderQR;
+    s.onerror = () => { qrDiv.remove(); gsExportConfigLink(); showToast('⚠️ Không tải được thư viện QR — dùng Link'); };
+    document.head.appendChild(s);
   } else {
     renderQR();
   }
