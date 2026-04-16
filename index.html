@@ -615,8 +615,11 @@
       <!-- ACTION BUTTONS -->
       <div class="gsheet-actions" style="flex-wrap:wrap;gap:8px">
         <button class="btn-gsheet primary" onclick="gsExportConfigLink()" style="flex:1;min-width:120px">🔗 Tạo Link</button>
-        <button class="btn-gsheet secondary" onclick="gsExportConfigQR()" style="flex:1;min-width:120px">📱 QR Code</button>
         <button class="btn-gsheet secondary" onclick="gsExportConfigMinified()" style="flex:1;min-width:120px" title="Loại bỏ metadata thừa, giữ lại các trường tối thiểu">⚡ Link tối giản</button>
+      </div>
+      <div class="gsheet-actions" style="flex-wrap:wrap;gap:8px;margin-top:0">
+        <button class="btn-gsheet primary" onclick="gsExportConfigQRShort()" id="btnQRShort" style="flex:2;min-width:200px;background:linear-gradient(135deg,#1a6b3f,#27ae60);border-color:#1a6b3f">📱 QR 1 Mã — Link rút gọn ✨</button>
+        <button class="btn-gsheet secondary" onclick="gsExportConfigQR()" style="flex:1;min-width:100px;font-size:11px;opacity:0.7" title="Fallback: QR trực tiếp, có thể tách 2 mã nếu quá dài">QR thô</button>
       </div>
 
       <!-- LINK BOX -->
@@ -635,11 +638,23 @@
 
       <!-- QR BOX (đơn hoặc phân đoạn) -->
       <div id="configQRBox" style="display:none;margin-top:14px">
+        <!-- Loading rút gọn -->
+        <div id="qrShortenLoading" style="display:none;text-align:center;padding:28px 0">
+          <div style="font-size:32px;animation:pulse 1.2s ease-in-out infinite">⚡</div>
+          <div style="font-size:13px;font-weight:700;color:var(--primary);margin-top:10px" id="qrShortenLoadingText">Đang rút gọn link...</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Chỉ mất vài giây</div>
+        </div>
+
         <!-- QR đơn -->
         <div id="qrSingleWrap" style="text-align:center">
+          <div id="qrShortBadge" style="display:none;margin-bottom:8px;padding:5px 12px;border-radius:20px;background:var(--green-light);color:var(--green);font-size:11px;font-weight:700;border:1px solid rgba(26,158,94,0.2);display:inline-block">✅ Link rút gọn — 1 QR duy nhất</div>
           <div id="qrCodeDiv" style="display:inline-block;border-radius:12px;border:4px solid white;box-shadow:var(--shadow);background:white;padding:8px"></div>
           <div id="qrSingleNote" style="font-size:11px;color:var(--text-muted);margin-top:8px"></div>
-          <button onclick="gsDownloadQR(0)" style="margin-top:10px;padding:8px 18px;font-size:12px;font-weight:700;border:1.5px solid var(--border);border-radius:20px;background:#f8f5f2;color:var(--text);cursor:pointer;font-family:inherit">💾 Lưu ảnh QR</button>
+          <div id="qrShortUrlShow" style="display:none;margin-top:6px;font-size:10px;color:var(--text-muted);word-break:break-all;max-width:280px;margin-left:auto;margin-right:auto;background:#f2ede8;padding:5px 8px;border-radius:6px;font-family:monospace"></div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap">
+            <button onclick="gsDownloadQR(0)" style="padding:8px 18px;font-size:12px;font-weight:700;border:1.5px solid var(--border);border-radius:20px;background:#f8f5f2;color:var(--text);cursor:pointer;font-family:inherit">💾 Lưu ảnh QR</button>
+            <button id="btnCopyShortUrl" onclick="gsCopyShortUrl()" style="display:none;padding:8px 14px;font-size:12px;font-weight:700;border:1.5px solid var(--green);border-radius:20px;background:var(--green-light);color:var(--green);cursor:pointer;font-family:inherit">📋 Sao chép link ngắn</button>
+          </div>
         </div>
 
         <!-- QR phân đoạn -->
@@ -1077,6 +1092,129 @@ async function gsShareConfigLink() {
 // Legacy compat
 function gsCopyLink(el) { gsCopyConfigLink(); }
 
+// ===== URL SHORTENER — QR 1 mã duy nhất =====
+// Thử lần lượt các dịch vụ miễn phí, fallback về nhau
+window._currentShortUrl = null;
+
+async function gsShortenUrl(longUrl) {
+  // Dịch vụ 1: TinyURL (CORS-friendly qua API)
+  try {
+    const resp = await fetch(
+      'https://tinyurl.com/api-create.php?url=' + encodeURIComponent(longUrl),
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (resp.ok) {
+      const short = (await resp.text()).trim();
+      if (short && short.startsWith('http') && short.length < 60) return short;
+    }
+  } catch(e) {}
+
+  // Dịch vụ 2: is.gd
+  try {
+    const resp = await fetch(
+      'https://is.gd/create.php?format=simple&url=' + encodeURIComponent(longUrl),
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (resp.ok) {
+      const short = (await resp.text()).trim();
+      if (short && short.startsWith('http') && short.length < 60) return short;
+    }
+  } catch(e) {}
+
+  // Dịch vụ 3: v.gd (cùng nhà với is.gd)
+  try {
+    const resp = await fetch(
+      'https://v.gd/create.php?format=simple&url=' + encodeURIComponent(longUrl),
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (resp.ok) {
+      const short = (await resp.text()).trim();
+      if (short && short.startsWith('http') && short.length < 60) return short;
+    }
+  } catch(e) {}
+
+  return null; // tất cả đều thất bại
+}
+
+// Nút mới: QR qua Link rút gọn
+async function gsExportConfigQRShort() {
+  if (!GS_CONFIG) { showToast('⚠️ Chưa có cấu hình!'); return; }
+
+  const btn = document.getElementById('btnQRShort');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang xử lý...';
+
+  // Ẩn các box cũ, hiện loading
+  document.getElementById('configLinkBox').style.display = 'none';
+  const qrBox = document.getElementById('configQRBox');
+  qrBox.style.display = 'block';
+  document.getElementById('qrSingleWrap').style.display = 'none';
+  document.getElementById('qrSegmentWrap').style.display = 'none';
+  document.getElementById('qrShortenLoading').style.display = 'block';
+  document.getElementById('qrShortBadge').style.display = 'none';
+  document.getElementById('qrShortUrlShow').style.display = 'none';
+  document.getElementById('btnCopyShortUrl').style.display = 'none';
+
+  // Tạo URL minified (giảm tối đa kích thước)
+  const minCfg = {
+    sheetId: GS_CONFIG.sheetId,
+    sheetName: GS_CONFIG.sheetName || 'DiLai',
+    keyObj: gsMinifyKeyObj(GS_CONFIG.keyObj)
+  };
+  const longUrl = gsBuildConfigUrl(minCfg);
+  gsShowSizePreview(longUrl);
+  gsLog('ok', `🔗 Đang rút gọn URL ${longUrl.length} ký tự...`);
+
+  // Load thư viện QR nếu cần
+  if (typeof QRCode === 'undefined') {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    }).catch(() => null);
+  }
+
+  // Rút gọn
+  document.getElementById('qrShortenLoadingText').textContent = 'Đang rút gọn link qua TinyURL / is.gd...';
+  const shortUrl = await gsShortenUrl(longUrl);
+
+  document.getElementById('qrShortenLoading').style.display = 'none';
+  document.getElementById('qrSingleWrap').style.display = 'block';
+
+  btn.disabled = false;
+  btn.textContent = '📱 QR 1 Mã — Link rút gọn ✨';
+
+  if (shortUrl) {
+    // Thành công — QR link ngắn ~25 ký tự, luôn 1 mã
+    window._currentShortUrl = shortUrl;
+    _renderQRSingle(shortUrl, true);
+    document.getElementById('qrShortBadge').style.display = 'inline-block';
+    document.getElementById('qrShortUrlShow').style.display = 'block';
+    document.getElementById('qrShortUrlShow').textContent = shortUrl;
+    document.getElementById('btnCopyShortUrl').style.display = 'inline-block';
+    document.getElementById('qrSingleNote').textContent =
+      `✅ Link rút gọn ${shortUrl.length} ký tự — quét bằng camera điện thoại`;
+    gsLog('ok', `✅ Rút gọn thành công: ${shortUrl} (${shortUrl.length} ký tự)`);
+    showToast('✅ Tạo QR thành công — 1 mã duy nhất!');
+  } else {
+    // Fallback — dùng URL gốc, vẫn cố render 1 QR
+    window._currentShortUrl = null;
+    _renderQRSingle(longUrl, false);
+    document.getElementById('qrSingleNote').textContent =
+      `⚠️ Không rút gọn được — dùng URL gốc (${longUrl.length} ký tự). Camera có thể khó quét.`;
+    gsLog('err', `⚠️ Rút gọn thất bại — render QR URL gốc (${longUrl.length} ký tự)`);
+    showToast('⚠️ Dịch vụ rút gọn bận — thử dùng nút "Tạo Link" thay thế');
+  }
+}
+
+function gsCopyShortUrl() {
+  const url = window._currentShortUrl;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => showToast('✅ Đã sao chép link ngắn!'))
+    .catch(() => { const t = document.createElement('textarea'); t.value = url; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); showToast('✅ Đã sao chép!'); });
+}
+
 // ===== QR EXPORT với phân đoạn =====
 const QR_SEGMENT_MAX = 2800; // an toàn dưới ngưỡng QR ver 40 ECC L
 
@@ -1118,22 +1256,29 @@ function gsExportConfigQR() {
 }
 
 // Tạo QR đơn
-function _renderQRSingle(text) {
+function _renderQRSingle(text, isShort) {
   document.getElementById('qrSingleWrap').style.display = 'block';
   document.getElementById('qrSegmentWrap').style.display = 'none';
+  document.getElementById('qrShortenLoading').style.display = 'none';
 
   const qrDiv = document.getElementById('qrCodeDiv');
   qrDiv.innerHTML = '';
   window._qrSingleUrl = text;
 
+  // QR link rút gọn dùng ECC cao hơn để dễ quét; URL dài dùng ECC L để chứa nhiều dữ liệu
+  const eccLevel = (isShort || text.length < 200) ? QRCode.CorrectLevel.M : QRCode.CorrectLevel.L;
+  const size = isShort ? 220 : 256;
+
   try {
     new QRCode(qrDiv, {
-      text: text, width: 256, height: 256,
+      text: text, width: size, height: size,
       colorDark: '#1a1a2e', colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.L
+      correctLevel: eccLevel
     });
-    document.getElementById('qrSingleNote').textContent =
-      `✅ ${text.length} ký tự — quét bằng camera để mở trên thiết bị kia`;
+    if (!isShort) {
+      document.getElementById('qrSingleNote').textContent =
+        `✅ ${text.length} ký tự — quét bằng camera để mở trên thiết bị kia`;
+    }
     gsLog('ok', `✅ QR tạo thành công — ${text.length} ký tự`);
   } catch(e) {
     document.getElementById('qrSingleWrap').style.display = 'none';
